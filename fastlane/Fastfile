@@ -8,7 +8,7 @@ unless FastlaneCore::Helper.bundler?
 end
 
 USER_ENV_FILE_PATH = File.join(Dir.home, '.wpios-env.default')
-PROJECT_ENV_FILE_PATH = File.expand_path(File.join(Dir.pwd, '../../.configure-files/project.env'))
+PROJECT_ENV_FILE_PATH = File.expand_path(File.join(Dir.pwd, '../.configure-files/project.env'))
 ALL_BUNDLE_IDENTIFIERS = [
       "org.wordpress",
       "org.wordpress.WordPressShare",
@@ -57,10 +57,11 @@ Dotenv.load(USER_ENV_FILE_PATH)
 Dotenv.load(PROJECT_ENV_FILE_PATH)
 ENV[GHHELPER_REPO="wordpress-mobile/wordpress-iOS"]
 ENV["PROJECT_NAME"]="WordPress"
-ENV["PUBLIC_CONFIG_FILE"]="../config/Version.Public.xcconfig"
-ENV["INTERNAL_CONFIG_FILE"]="../config/Version.internal.xcconfig"
+ENV["PROJECT_ROOT_FOLDER"]=File.dirname(__dir__)
+ENV["PUBLIC_CONFIG_FILE"]=File.join(ENV["PROJECT_ROOT_FOLDER"], "config", "Version.Public.xcconfig")
+ENV["INTERNAL_CONFIG_FILE"]=File.join(ENV["PROJECT_ROOT_FOLDER"], "config", "Version.internal.xcconfig")
 ENV["DOWNLOAD_METADATA"]="./fastlane/download_metadata.swift"
-ENV["PROJECT_ROOT_FOLDER"]="../"
+ENV["WORKSPACE_PATH"]=File.join(ENV["PROJECT_ROOT_FOLDER"], "WordPress.xcworkspace")
 
 ########################################################################
 # Screenshots
@@ -308,7 +309,7 @@ import "./ScreenshotFastfile"
 
     gym(
       scheme: "WordPress Alpha",
-      workspace: "../WordPress.xcworkspace",
+      workspace: ENV["WORKSPACE_PATH"],
       export_method: "enterprise",
       clean: true,
       output_directory: "../build/",
@@ -368,7 +369,7 @@ import "./ScreenshotFastfile"
 
     gym(
       scheme: "WordPress Internal",
-      workspace: "../WordPress.xcworkspace",
+      workspace: ENV["WORKSPACE_PATH"],
       export_method: "enterprise",
       clean: true,
       output_directory: "../build/",
@@ -419,7 +420,7 @@ import "./ScreenshotFastfile"
 
     appstore_code_signing
 
-    gym(scheme: "WordPress", workspace: "../WordPress.xcworkspace",
+    gym(scheme: "WordPress", workspace: ENV["WORKSPACE_PATH"],
       clean: true,
       export_team_id: get_required_env("EXT_EXPORT_TEAM_ID"),
       derived_data_path: "../derived-data/itc/",
@@ -473,15 +474,18 @@ import "./ScreenshotFastfile"
   lane :build_for_translation_review do | options |
     ios_build_preflight() unless (options[:skip_prechecks])
 
-    sh("cd ../.. && ./Scripts/update-translations.rb review current")
-    sh("cd ../.. && ./Scripts/update-translations.rb review waiting")
-    sh("cd ../.. && ./Scripts/update-translations.rb review fuzzy")
+    update_translations_script_path = File.join( ENV["PROJECT_ROOT_FOLDER"], 'Scripts', 'update-translations.rb' )
+    sh("#{update_translations_script_path} review current")
+    sh("#{update_translations_script_path} review waiting")
+    sh("#{update_translations_script_path} review fuzzy")
 
-    ios_merge_translators_strings(strings_folder:"../WordPress/Resources/")
-    sh("cd ../.. && ./Scripts/extract-framework-translations.swift")
+    ios_merge_translators_strings(strings_folder: File.join( ENV["PROJECT_ROOT_FOLDER"], "WordPress", "Resources"))
+    
+    extract_framework_translations_script_path = File.join( File.join( ENV["PROJECT_ROOT_FOLDER"], "Scripts", "extract-framework-translations.swift"))
+    sh("#{extract_framework_translations_script_path}")
 
     xcbuild(
-        workspace: "../WordPress.xcworkspace",
+        workspace: ENV["WORKSPACE_PATH"],
         scheme: "WordPress",
         configuration: "Debug",
         xcargs: "-sdk iphonesimulator SYMROOT='/var/tmp/'"
@@ -493,7 +497,7 @@ import "./ScreenshotFastfile"
   desc "Build for Testing"
   lane :build_for_testing do | options |
     run_tests(
-      workspace: "../WordPress.xcworkspace",
+      workspace: ENV["WORKSPACE_PATH"],
       scheme: "WordPress",
       derived_data_path: "../DerivedData",
       build_for_testing: true,
@@ -621,7 +625,7 @@ import "./ScreenshotFastfile"
     UI.user_error!("Unable to find .xctestrun file") unless testPlanPath != nil and File.exists? (testPlanPath)
 
     multi_scan(
-      workspace: "../WordPress.xcworkspace",
+      workspace: ENV["WORKSPACE_PATH"],
       scheme: "WordPress",
       device: options[:device],
       deployment_target_version: options[:ios_version],
