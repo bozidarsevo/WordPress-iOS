@@ -57,7 +57,7 @@ Dotenv.load(USER_ENV_FILE_PATH)
 Dotenv.load(PROJECT_ENV_FILE_PATH)
 ENV[GHHELPER_REPO="wordpress-mobile/wordpress-iOS"]
 ENV["PROJECT_NAME"]="WordPress"
-ENV["PROJECT_ROOT_FOLDER"]=File.dirname(__dir__)
+ENV["PROJECT_ROOT_FOLDER"]=File.dirname Dir.pwd
 ENV["PUBLIC_CONFIG_FILE"]=File.join(ENV["PROJECT_ROOT_FOLDER"], "config", "Version.Public.xcconfig")
 ENV["INTERNAL_CONFIG_FILE"]=File.join(ENV["PROJECT_ROOT_FOLDER"], "config", "Version.internal.xcconfig")
 ENV["DOWNLOAD_METADATA"]="./fastlane/download_metadata.swift"
@@ -499,7 +499,7 @@ import "./ScreenshotFastfile"
     run_tests(
       workspace: ENV["WORKSPACE_PATH"],
       scheme: "WordPress",
-      derived_data_path: "../DerivedData",
+      derived_data_path: File.join(ENV["PROJECT_ROOT_FOLDER"], "DerivedData"),
       build_for_testing: true,
       device: options[:device],
       deployment_target_version: options[:ios_version],
@@ -616,13 +616,13 @@ import "./ScreenshotFastfile"
   lane :test_without_building do | options |
 
     # Find the referenced .xctestrun file based on its name
-    buildProductsPath = File.expand_path("../DerivedData/Build/Products/", File.dirname(Dir.pwd))
+    buildProductsPath = File.join(ENV["PROJECT_ROOT_FOLDER"], "DerivedData", "Build", "Products")
 
     testPlanPath = Dir.glob(File.join(buildProductsPath, '*.xctestrun') ).select { |e|
       e.include?(options[:name])
     }.first
 
-    UI.user_error!("Unable to find .xctestrun file") unless testPlanPath != nil and File.exists? (testPlanPath)
+    UI.user_error!("Unable to find .xctestrun file at #{buildProductsPath}") unless testPlanPath != nil and File.exists? (testPlanPath)
 
     multi_scan(
       workspace: ENV["WORKSPACE_PATH"],
@@ -632,7 +632,7 @@ import "./ScreenshotFastfile"
       test_without_building: true,
       xctestrun: testPlanPath,
       try_count: options[:try_count],
-      output_directory: "../build/results",
+      output_directory: File.join(ENV["PROJECT_ROOT_FOLDER"], "build", "results"),
       result_bundle: true
     )
   end
